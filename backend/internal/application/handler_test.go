@@ -1232,7 +1232,7 @@ func (suite *HandlerTestSuite) TestHandleError_ClientError() {
 
 	svcErr := &ErrorInvalidApplicationName
 
-	handler.handleError(w, r, svcErr)
+	handler.handleError(context.Background(), w, r, svcErr)
 
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
 	assert.Equal(suite.T(), "application/json", w.Header().Get("Content-Type"))
@@ -1252,7 +1252,7 @@ func (suite *HandlerTestSuite) TestHandleError_NotFoundError() {
 
 	svcErr := &ErrorApplicationNotFound
 
-	handler.handleError(w, r, svcErr)
+	handler.handleError(context.Background(), w, r, svcErr)
 
 	assert.Equal(suite.T(), http.StatusNotFound, w.Code)
 	assert.Equal(suite.T(), "application/json", w.Header().Get("Content-Type"))
@@ -1272,7 +1272,7 @@ func (suite *HandlerTestSuite) TestHandleError_ServerError() {
 
 	svcErr := &serviceerror.InternalServerError
 
-	handler.handleError(w, r, svcErr)
+	handler.handleError(context.Background(), w, r, svcErr)
 
 	assert.Equal(suite.T(), http.StatusInternalServerError, w.Code)
 	assert.Equal(suite.T(), "application/json", w.Header().Get("Content-Type"))
@@ -2419,4 +2419,113 @@ func (suite *HandlerTestSuite) TestHandleApplicationGetRequest_EmptyResponseType
 	assert.NotNil(suite.T(), response)
 
 	mockService.AssertExpectations(suite.T())
+}
+
+func (suite *HandlerTestSuite) TestHandleApplicationPutRequest_FieldsUnchanged() {
+	mockService := NewApplicationServiceInterfaceMock(suite.T())
+	handler := newApplicationHandler(mockService)
+
+	unchangedJSON := `{"ouId": "ou-123", "name": "Existing Pristine App Name"}`
+
+	expectedApp := &model.ApplicationDTO{
+		ID:          "test-app-id",
+		OUID:        "ou-123",
+		Name:        "Existing Pristine App Name",
+		Description: "Existing Description",
+	}
+
+	mockService.On("UpdateApplication", mock.Anything, "test-app-id",
+		mock.AnythingOfType("*model.ApplicationDTO")).
+		Return(expectedApp, nil)
+
+	req := httptest.NewRequest(http.MethodPut, "/applications/test-app-id", bytes.NewBufferString(unchangedJSON))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", "test-app-id")
+	w := httptest.NewRecorder()
+
+	handler.HandleApplicationPutRequest(w, req)
+
+	assert.Equal(suite.T(), http.StatusOK, w.Code)
+	assert.Equal(suite.T(), "application/json", w.Header().Get("Content-Type"))
+
+	var response model.ApplicationCompleteResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), "test-app-id", response.ID)
+	assert.Equal(suite.T(), "Existing Pristine App Name", response.Name)
+
+	mockService.AssertExpectations(suite.T())
+}
+
+func (suite *HandlerTestSuite) TestHandleApplicationPutRequest_OmitOptionalFields() {
+	mockService := NewApplicationServiceInterfaceMock(suite.T())
+	handler := newApplicationHandler(mockService)
+
+	partialJSON := `{"ouId": "ou-123", "name": "Updated Name Only"}`
+
+	expectedApp := &model.ApplicationDTO{
+		ID:          "test-app-id",
+		OUID:        "ou-123",
+		Name:        "Updated Name Only",
+		Description: "Preserved Original Description",
+		Template:    "spa",
+	}
+
+	mockService.On("UpdateApplication", mock.Anything, "test-app-id",
+		mock.AnythingOfType("*model.ApplicationDTO")).
+		Return(expectedApp, nil)
+
+	req := httptest.NewRequest(http.MethodPut, "/applications/test-app-id", bytes.NewBufferString(partialJSON))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", "test-app-id")
+	w := httptest.NewRecorder()
+
+	handler.HandleApplicationPutRequest(w, req)
+
+	assert.Equal(suite.T(), http.StatusOK, w.Code)
+
+	var response model.ApplicationCompleteResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(suite.T(), err)
+	assert.Equal(suite.T(), "Preserved Original Description", response.Description)
+	assert.Equal(suite.T(), "spa", response.Template)
+	mockService.AssertExpectations(suite.T())
+}
+
+func (suite *HandlerTestSuite) TestHandleApplicationPutRequest_OmitRequiredFields() {
+	mockService := NewApplicationServiceInterfaceMock(suite.T())
+	handler := newApplicationHandler(mockService)
+
+	invalidPartialJSON := `{"name": ""}`
+
+	req := httptest.NewRequest(http.MethodPut, "/applications/test-app-id", bytes.NewBufferString(invalidPartialJSON))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", "test-app-id")
+	w := httptest.NewRecorder()
+
+	handler.HandleApplicationPutRequest(w, req)
+
+	// Since Name was cleared out entirely, validation will catch it
+	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
+}
+
+func (suite *HandlerTestSuite) TestHandleApplicationPutRequest_EmptyJSONPayload() {
+	mockService := NewApplicationServiceInterfaceMock(suite.T())
+	handler := newApplicationHandler(mockService)
+
+	// An empty payload triggers a struct validation failure because required
+	// fields like name and ouId default to "" (empty strings).
+	unchangedJSON := `{}`
+
+	req := httptest.NewRequest(http.MethodPut, "/applications/test-app-id", bytes.NewBufferString(unchangedJSON))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", "test-app-id")
+	w := httptest.NewRecorder()
+
+	handler.HandleApplicationPutRequest(w, req)
+
+	// ✅ CORRECTED: Assert that a completely empty JSON body triggers a 400 Bad Request.
+	// Since the handler cuts execution early on validation failures, the mock service
+	// is never invoked, meaning we do not register any .On() expectations here.
+	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
 }

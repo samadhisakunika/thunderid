@@ -154,8 +154,8 @@ const translations = {
     'welcome.sections.start': 'Start',
     'welcome.sections.recent': 'Recent',
     'welcome.sections.tryoutProduct': 'Tryout',
-    'welcome.tryoutProduct.consumerApp': 'Securing Consumer App',
-    'welcome.tryoutProduct.consumerAppDesc': 'Tryout user journeys for a consumer-facing app',
+    'welcome.tryoutProduct.securingApplication': 'Securing Application',
+    'welcome.tryoutProduct.securingApplicationDesc': 'Tryout user journeys for a web application',
     'welcome.tryoutProduct.aiAgents': 'Securing AI Agents',
     'welcome.tryoutProduct.aiAgentsDesc': 'Tryout identity patterns for AI agents and tools',
     'welcome.tryoutProduct.mcp': 'Securing MCP',
@@ -192,7 +192,7 @@ const translations = {
     'welcome.wayfinderSampleSetup.setupComplete': 'Already set up — you can skip this section',
     'welcome.wayfinderSampleSetup.steps.getSample.title': 'Get the Wayfinder Sample',
     'welcome.wayfinderSampleSetup.steps.getSample.description':
-      'Download the latest Wayfinder sample distribution and extract the archive. It ships with the web frontend, AI agent service, and Wayfinder server.',
+      'Download the latest Wayfinder sample distribution and extract the archive. It ships with the <strong>web frontend</strong>, <strong>AI agent service</strong>, and <strong>Wayfinder server</strong>.',
     'welcome.wayfinderSampleSetup.steps.configure.title': 'Configure Wayfinder Sample in {{productName}}',
     'welcome.wayfinderSampleSetup.steps.configure.description':
       'Apply the Wayfinder sample configurations to {{productName}}. Skip this step if already done.',
@@ -203,12 +203,12 @@ const translations = {
 
     'welcome.wayfinderFolderImport.actions.selectFolder': 'Select Wayfinder Sample Folder',
     'welcome.wayfinderFolderImport.actions.change': 'Change',
-    'welcome.wayfinderFolderImport.actions.importConfig': 'Configure in ThunderID',
-    'welcome.wayfinderFolderImport.actions.reImport': 'Re-import',
+    'welcome.wayfinderFolderImport.actions.importConfig': 'Configure in {{productName}}',
+    'welcome.wayfinderFolderImport.actions.reconfigure': 'Reconfigure',
     'welcome.wayfinderFolderImport.actions.reSelectFolder': 'Re-select Folder',
     'welcome.wayfinderFolderImport.status.importing': 'Importing configuration…',
     'welcome.wayfinderFolderImport.status.alreadyDone': 'Wayfinder sample already configured in {{productName}}',
-    'welcome.wayfinderFolderImport.status.lastImported': 'Last imported on {{date}} — you can skip this step.',
+    'welcome.wayfinderFolderImport.status.lastImported': 'Last configured on {{date}} — you can skip this step.',
     'welcome.wayfinderFolderImport.status.success': 'Wayfinder sample configured in {{productName}} successfully',
     'welcome.wayfinderFolderImport.status.resourcesImported_one': '{{count}} resource imported',
     'welcome.wayfinderFolderImport.status.resourcesImported_other': '{{count}} resources imported',
@@ -236,84 +236,88 @@ const translations = {
       'Head straight to the console and explore {{productName}} on your own.',
     'welcome.getStarted.options.skip.action': 'Go to Console',
 
-    'welcome.consumerAppTryout.breadcrumb': 'Tryout Securing Consumer App',
-    'welcome.consumerAppTryout.overline': 'Securing Consumer App',
-    'welcome.consumerAppTryout.title': 'Secure Your Consumer App',
-    'welcome.consumerAppTryout.subtitle':
-      'Run consumer app use cases against the Wayfinder sample, a fictional consumer travel-booking app.',
-    'welcome.consumerAppTryout.steps.getSample.title': 'Get the Wayfinder Sample',
-    'welcome.consumerAppTryout.steps.getSample.description':
+    'welcome.applicationTryout.breadcrumb': 'Tryout Securing Application',
+    'welcome.applicationTryout.overline': 'Securing Application',
+    'welcome.applicationTryout.title': 'Secure Your Application',
+    'welcome.applicationTryout.subtitle':
+      'Run consumer application use cases against the Wayfinder sample, a fictional travel-booking application.',
+    'welcome.applicationTryout.steps.getSample.title': 'Get the Wayfinder Sample',
+    'welcome.applicationTryout.steps.getSample.description':
       'Download the latest Wayfinder sample distribution and extract the archive. It ships with the web frontend, AI agent service, and Wayfinder server.',
-    'welcome.consumerAppTryout.steps.getSample.action': 'Download Sample',
-    'welcome.consumerAppTryout.steps.importConfigs.title': 'Configure Wayfinder Sample in {{productName}}',
-    'welcome.consumerAppTryout.steps.importConfigs.description':
+    'welcome.applicationTryout.steps.getSample.action': 'Download Sample',
+    'welcome.applicationTryout.steps.importConfigs.title': 'Configure Wayfinder Sample in {{productName}}',
+    'welcome.applicationTryout.steps.importConfigs.description':
       'Apply the Wayfinder sample configurations to {{productName}}.',
-    'welcome.consumerAppTryout.steps.runSample.title': 'Run the Sample',
-    'welcome.consumerAppTryout.steps.runSample.description':
+    'welcome.applicationTryout.steps.runSample.title': 'Run the Sample',
+    'welcome.applicationTryout.steps.runSample.description':
       'Start all Wayfinder services from the extracted sample directory.',
-    'welcome.consumerAppTryout.steps.runSample.action': 'See Run Instructions',
-    'welcome.consumerAppTryout.steps.login.title': 'Log In to the App',
-    'welcome.consumerAppTryout.steps.login.description':
+    'welcome.applicationTryout.steps.runSample.action': 'See Run Instructions',
+    'welcome.applicationTryout.steps.login.title': 'Log In to the App',
+    'welcome.applicationTryout.steps.login.description':
       'Open the Wayfinder sample app and sign in with the demo credentials below.',
 
-    'welcome.consumerAppTryout.scenarios.title': 'Try use cases',
-    'welcome.consumerAppTryout.scenarios.tabs.login': 'Log In',
-    'welcome.consumerAppTryout.scenarios.tabs.signup': 'Self Sign-Up',
-    'welcome.consumerAppTryout.scenarios.tabs.profile': 'View Profile',
-    'welcome.consumerAppTryout.scenarios.tabs.recovery': 'Account Recovery',
-    'welcome.consumerAppTryout.scenarios.tabs.onboard': 'Onboard Staff',
+    'welcome.applicationTryout.scenarios.title': 'Try these with the Wayfinder sample',
+    'welcome.applicationTryout.scenarios.tabs.login': 'Log In',
+    'welcome.applicationTryout.scenarios.tabs.signup': 'Self Sign-Up',
+    'welcome.applicationTryout.scenarios.tabs.profile': 'View Profile',
+    'welcome.applicationTryout.scenarios.tabs.recovery': 'Account Recovery',
+    'welcome.applicationTryout.scenarios.tabs.onboard': 'Onboard Staff',
 
-    'welcome.consumerAppTryout.scenarios.login.description':
+    'welcome.applicationTryout.scenarios.login.description':
       'Sign in with the demo consumer account to explore the Wayfinder app.',
-    'welcome.consumerAppTryout.scenarios.login.step1': 'Open the Wayfinder app at <a>http://localhost:5173</a>.',
-    'welcome.consumerAppTryout.scenarios.login.step2': 'Click Sign in and use the credentials below.',
+    'welcome.applicationTryout.scenarios.login.step1': 'Open the Wayfinder app at <a>http://localhost:5173</a>.',
+    'welcome.applicationTryout.scenarios.login.step2': 'Click Sign in and use the credentials below.',
 
-    'welcome.consumerAppTryout.scenarios.signup.description':
-      'Register a new customer account and see ThunderID assign the Traveler role automatically on completion.',
-    'welcome.consumerAppTryout.scenarios.signup.step1': 'Open <a>http://localhost:5173</a> and click Sign in.',
-    'welcome.consumerAppTryout.scenarios.signup.step2': 'On the ThunderID page, click Sign up.',
-    'welcome.consumerAppTryout.scenarios.signup.step3': 'Fill in the registration form using the sample details below.',
-    'welcome.consumerAppTryout.scenarios.signup.sampleFields.username': 'Username',
-    'welcome.consumerAppTryout.scenarios.signup.sampleFields.email': 'Email',
-    'welcome.consumerAppTryout.scenarios.signup.sampleFields.givenName': 'Given name',
-    'welcome.consumerAppTryout.scenarios.signup.sampleFields.familyName': 'Family name',
-    'welcome.consumerAppTryout.scenarios.signup.step4':
-      'Submit. ThunderID creates a Customer user, records terms acceptance, and assigns the Traveler role.',
-    'welcome.consumerAppTryout.scenarios.signup.step5':
-      'The browser redirects back to Wayfinder with the new account authenticated.',
+    'welcome.applicationTryout.scenarios.signup.description':
+      'Register a new customer account and see {{productName}} assign the Traveler role automatically on completion.',
+    'welcome.applicationTryout.scenarios.signup.step1': 'Open <a>http://localhost:5173</a> and click Sign in.',
+    'welcome.applicationTryout.scenarios.signup.step2': 'On the {{productName}} page, click Sign up.',
+    'welcome.applicationTryout.scenarios.signup.step3':
+      'Fill in the registration form using the sample details below. Enter a password of your choice.',
+    'welcome.applicationTryout.scenarios.signup.sampleFields.username': 'Username',
+    'welcome.applicationTryout.scenarios.signup.sampleFields.email': 'Email',
+    'welcome.applicationTryout.scenarios.signup.sampleFields.givenName': 'First name',
+    'welcome.applicationTryout.scenarios.signup.sampleFields.familyName': 'Last name',
+    'welcome.applicationTryout.scenarios.signup.sampleFields.mobileNumber': 'Mobile number',
+    'welcome.applicationTryout.scenarios.signup.step4':
+      'Submit. {{productName}} creates a Customer user and assigns the Traveler role.',
+    'welcome.applicationTryout.scenarios.signup.step5': 'The browser redirects back to Wayfinder.',
 
-    'welcome.consumerAppTryout.scenarios.profile.description':
+    'welcome.applicationTryout.scenarios.profile.description':
       'Explore the self-service profile page — view account details, edit attributes, and change your password.',
-    'welcome.consumerAppTryout.scenarios.profile.step1': 'Sign in as john.doe at <a>http://localhost:5173</a>.',
-    'welcome.consumerAppTryout.scenarios.profile.step2':
+    'welcome.applicationTryout.scenarios.profile.step1': 'Sign in as john.doe at <a>http://localhost:5173</a>.',
+    'welcome.applicationTryout.scenarios.profile.step2':
       'Click the username in the top-right corner and select Profile.',
-    'welcome.consumerAppTryout.scenarios.profile.step3':
-      'View account details, edit profile attributes, or change your password. The page calls the identity provider directly with your session token.',
+    'welcome.applicationTryout.scenarios.profile.step3':
+      'View account details, edit profile attributes, or change your password. The page calls {{productName}} directly with your session token.',
 
-    'welcome.consumerAppTryout.scenarios.recovery.description':
+    'welcome.applicationTryout.scenarios.recovery.description':
       'Walk through the password recovery flow — John forgets his password and resets it via email.',
-    'welcome.consumerAppTryout.scenarios.recovery.smtpNote':
+    'welcome.applicationTryout.scenarios.recovery.smtpNote':
       "Recovery emails require a configured SMTP server. Add your SMTP settings under email.smtp in {{productName}}'s deployment.yaml and restart the server before trying this flow.",
-    'welcome.consumerAppTryout.scenarios.recovery.step1': 'Open <a>http://localhost:5173</a> and click Sign in.',
-    'welcome.consumerAppTryout.scenarios.recovery.step2': 'On the ThunderID sign-in page, click Forgot password?',
-    'welcome.consumerAppTryout.scenarios.recovery.step3': 'Enter john.doe as the username and submit.',
-    'welcome.consumerAppTryout.scenarios.recovery.step4':
-      "ThunderID sends a recovery email to John's registered address.",
-    'welcome.consumerAppTryout.scenarios.recovery.step5': 'Open the link in the email and set a new password.',
-    'welcome.consumerAppTryout.scenarios.recovery.step6': 'Sign in again with the new credentials.',
+    'welcome.applicationTryout.scenarios.recovery.step1': 'Open <a>http://localhost:5173</a> and click Sign in.',
+    'welcome.applicationTryout.scenarios.recovery.step2': 'On the {{productName}} sign-in page, click Forgot password?',
+    'welcome.applicationTryout.scenarios.recovery.step3': 'Enter john.doe as the username and submit.',
+    'welcome.applicationTryout.scenarios.recovery.step4':
+      "{{productName}} sends a recovery email to John's registered address.",
+    'welcome.applicationTryout.scenarios.recovery.step5': 'Open the link in the email and set a new password.',
+    'welcome.applicationTryout.scenarios.recovery.step6': 'Sign in again with the new credentials.',
 
-    'welcome.consumerAppTryout.scenarios.onboard.description':
-      'Invite and onboard a new staff member using the staff invitation flow. The invited user selects a role (Support or DestinationsAdmin) during onboarding.',
-    'welcome.consumerAppTryout.scenarios.onboard.smtpNote':
-      "Staff invitation emails require a configured SMTP server. Add your SMTP settings under email.smtp in {{productName}}'s deployment.yaml and restart the server before trying this flow.",
-    'welcome.consumerAppTryout.scenarios.onboard.step1':
-      'Sign in as alex.carter (OpsAdmin) at <a>http://localhost:5173</a> using the credentials below.',
-    'welcome.consumerAppTryout.scenarios.onboard.step2':
-      'Navigate to the staff management section and invite a new staff member by email.',
-    'welcome.consumerAppTryout.scenarios.onboard.step3':
-      'The invited user receives an onboarding email. They open the link and complete the onboarding flow, choosing between the Support and DestinationsAdmin roles.',
-    'welcome.consumerAppTryout.scenarios.onboard.step4':
-      'Once onboarded, the new staff member can sign in to the app with their chosen role permissions active.',
+    'welcome.applicationTryout.scenarios.onboard.description':
+      'Invite and onboard two new staff members entirely from the {{productName}} Console: Sam Rivera (Support) and Maya Patel (DestinationsAdmin). The admin picks the staff role and sends the invitation, and the matching role is attached automatically when the invitee completes their profile.',
+    'welcome.applicationTryout.scenarios.onboard.smtpNote':
+      "Staff invitation requires a configured SMTP server and the user onboarding flow enabled. Add your SMTP settings under email.smtp and set flow.user_onboarding_flow_handle to wayfinder-onboarding-flow in {{productName}}'s deployment.yaml, then restart the server before trying this flow.",
+    'welcome.applicationTryout.scenarios.onboard.step1': 'Sign in to the {{productName}} Console as your admin user.',
+    'welcome.applicationTryout.scenarios.onboard.step2': 'Navigate to Users and select Add User.',
+    'welcome.applicationTryout.scenarios.onboard.step3': 'Select Staff as the user type.',
+    'welcome.applicationTryout.scenarios.onboard.step4':
+      "Pick Support as the role, enter Sam Rivera's email (sam.rivera@example.com), and click Send invitation. An invite link is emailed to Sam.",
+    'welcome.applicationTryout.scenarios.onboard.step5':
+      "Open the email in Sam's inbox and open the link. The browser opens a Complete Your Profile page.",
+    'welcome.applicationTryout.scenarios.onboard.step6':
+      "Fill in the additional attributes and submit. Sam's account is now active with the Support role attached.",
+    'welcome.applicationTryout.scenarios.onboard.step7':
+      'Repeat the flow for Maya Patel (email maya.patel@example.com), picking DestinationsAdmin as the role.',
 
     'welcome.aiAgentsTryout.breadcrumb': 'Tryout Securing AI Agents',
     'welcome.aiAgentsTryout.overline': 'Securing AI Agents',
@@ -335,7 +339,7 @@ const translations = {
     'welcome.aiAgentsTryout.steps.login.description':
       'Open the Wayfinder sample app and sign in with the demo credentials below.',
 
-    'welcome.aiAgentsTryout.scenarios.title': 'Try use cases',
+    'welcome.aiAgentsTryout.scenarios.title': 'Try these with the Wayfinder sample',
     'welcome.aiAgentsTryout.scenarios.apiKeyNote':
       'The AI agent requires an LLM API key. Edit ai-agent/.env in the sample directory and set ANTHROPIC_API_KEY or GOOGLE_API_KEY before starting the services.',
     'welcome.aiAgentsTryout.scenarios.tabs.protect': 'Protect the Agent',
@@ -398,7 +402,7 @@ const translations = {
     'welcome.mcpTryout.steps.allowCors.description':
       "Add Inspector's origin to {{productName}}'s CORS allow-list in repository/conf/deployment.yaml, then restart {{productName}}.",
 
-    'welcome.mcpTryout.scenarios.title': 'Try use cases',
+    'welcome.mcpTryout.scenarios.title': 'Try these with the Wayfinder sample',
     'welcome.mcpTryout.scenarios.tabs.connect': 'Connect & Sign In',
     'welcome.mcpTryout.scenarios.tabs.permissions': 'Test Permissions',
 

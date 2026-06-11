@@ -19,6 +19,7 @@
 package group
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -1135,6 +1136,58 @@ func (suite *GroupHandlerTestSuite) TestGroupHandler_HandleGroupPutRequest() {
 				serviceMock.AssertNotCalled(suite.T(), "UpdateGroup", mock.Anything, mock.Anything, mock.Anything)
 			},
 		},
+		{
+			name:           "success with fields unchanged",
+			method:         http.MethodPut,
+			url:            "/groups/grp-001",
+			pathParamKey:   "id",
+			pathParamValue: "grp-001",
+			body:           `{"name": "Valid Group Name", "ouId": "ou-001"}`,
+			setJSONHeader:  true,
+			setup: func(serviceMock *GroupServiceInterfaceMock) {
+				serviceMock.
+					On("UpdateGroup", mock.Anything, "grp-001", mock.MatchedBy(func(request UpdateGroupRequest) bool {
+						return request.Name == "Valid Group Name" &&
+							request.OUID == "ou-001" &&
+							request.Description == ""
+					})).
+					Return(&Group{ID: "grp-001", Name: "Valid Group Name"}, nil).
+					Once()
+			},
+			assert: func(rr *httptest.ResponseRecorder) {
+				require.Equal(suite.T(), http.StatusOK, rr.Code)
+			},
+		},
+		{
+			name:           "failed with missing required fields",
+			method:         http.MethodPut,
+			url:            "/groups/grp-001",
+			pathParamKey:   "id",
+			pathParamValue: "grp-001",
+			body:           `{"ouId": "ou-001"}`,
+			setJSONHeader:  true,
+			assert: func(rr *httptest.ResponseRecorder) {
+				require.Equal(suite.T(), http.StatusBadRequest, rr.Code)
+			},
+			assertService: func(serviceMock *GroupServiceInterfaceMock) {
+				serviceMock.AssertNotCalled(suite.T(), "UpdateGroup", mock.Anything, mock.Anything, mock.Anything)
+			},
+		},
+		{
+			name:           "failed with empty json body payload",
+			method:         http.MethodPut,
+			url:            "/groups/grp-001",
+			pathParamKey:   "id",
+			pathParamValue: "grp-001",
+			body:           `{}`,
+			setJSONHeader:  true,
+			assert: func(rr *httptest.ResponseRecorder) {
+				require.Equal(suite.T(), http.StatusBadRequest, rr.Code)
+			},
+			assertService: func(serviceMock *GroupServiceInterfaceMock) {
+				serviceMock.AssertNotCalled(suite.T(), "UpdateGroup", mock.Anything, mock.Anything, mock.Anything)
+			},
+		},
 	}
 
 	runHandlerTestCases(suite, testCases, func(handler *groupHandler, writer http.ResponseWriter, req *http.Request) {
@@ -1424,7 +1477,7 @@ func (suite *GroupHandlerTestSuite) TestGroupHandler_HandleErrorInternalServer()
 	handler := newGroupHandler(nil)
 	rr := httptest.NewRecorder()
 
-	handler.handleError(rr, &serviceerror.ServiceError{
+	handler.handleError(context.Background(), rr, &serviceerror.ServiceError{
 		Type:             serviceerror.ServerErrorType,
 		Code:             "GRP-9999",
 		Error:            i18ncore.I18nMessage{DefaultValue: "boom"},
@@ -1700,7 +1753,7 @@ func (suite *GroupHandlerTestSuite) TestGroupHandler_HandleErrorClientError() {
 	handler := newGroupHandler(nil)
 	rr := httptest.NewRecorder()
 
-	handler.handleError(rr, &ErrorGroupNameConflict)
+	handler.handleError(context.Background(), rr, &ErrorGroupNameConflict)
 
 	require.Equal(t, http.StatusConflict, rr.Code)
 

@@ -1280,3 +1280,56 @@ func (suite *HandlerTestSuite) TestHandleActionGetAtResourceRequest_ServiceError
 
 	suite.Equal(http.StatusInternalServerError, w.Code)
 }
+
+func (suite *HandlerTestSuite) TestHandleResourceServerPutRequest_FieldsUnchanged() {
+	reqBody := UpdateResourceServerRequest{
+		Name:   "updated-rs",
+		Handle: "updated-handle-string",
+		OUID:   "ou-123",
+	}
+
+	suite.mockService.On("UpdateResourceServer", mock.Anything,
+		"rs-123", mock.Anything).Return(&ResourceServer{
+		ID:   "rs-123",
+		Name: "updated-rs",
+	}, nil)
+
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PUT", "/resource-servers/rs-123", bytes.NewReader(body))
+	req.SetPathValue("id", "rs-123")
+	w := httptest.NewRecorder()
+
+	suite.handler.HandleResourceServerPutRequest(w, req)
+
+	suite.Equal(http.StatusOK, w.Code)
+}
+
+func (suite *HandlerTestSuite) TestHandleResourceServerPutRequest_EmptyJSONPayload() {
+	emptyJSON := `{}`
+
+	req := httptest.NewRequest("PUT", "/resource-servers/rs-123", bytes.NewReader([]byte(emptyJSON)))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", "rs-123")
+	w := httptest.NewRecorder()
+
+	suite.handler.HandleResourceServerPutRequest(w, req)
+	suite.Equal(http.StatusBadRequest, w.Code)
+}
+
+func (suite *HandlerTestSuite) TestHandleResourceServerPutRequest_MissingRequiredFields() {
+	incompleteJSON := `{"handle": "updated-handle-string"}`
+
+	suite.mockService.On("UpdateResourceServer", mock.Anything,
+		"rs-123", mock.Anything).Return(&ResourceServer{
+		ID: "rs-123",
+	}, nil)
+
+	req := httptest.NewRequest("PUT", "/resource-servers/rs-123", bytes.NewReader([]byte(incompleteJSON)))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", "rs-123")
+	w := httptest.NewRecorder()
+
+	suite.handler.HandleResourceServerPutRequest(w, req)
+
+	suite.Equal(http.StatusBadRequest, w.Code)
+}

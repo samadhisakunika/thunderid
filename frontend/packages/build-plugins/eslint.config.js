@@ -16,12 +16,12 @@
  * under the License.
  */
 
-import type {OsKey} from '../models/download-assets';
+import thunderIdPlugin from '@thunderid/eslint-plugin';
 
-const OS_LABELS: Record<OsKey, string> = {
-  linux: 'Linux',
-  macos: 'Mac OS',
-  win: 'Windows',
-};
-
-export default OS_LABELS;
+export default [
+  {
+    ignores: ['dist/**', 'build/**', 'node_modules/**', 'coverage/**'],
+  },
+  ...thunderIdPlugin.configs.typescript,
+  ...thunderIdPlugin.configs.vitest,
+];

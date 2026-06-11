@@ -71,17 +71,18 @@ type OrganizationUnitRequest struct {
 // OrganizationUnitRequestWithID represents the request body for creating an organization unit
 // in import/declarative paths where preserving IDs is required.
 type OrganizationUnitRequestWithID struct {
-	ID              string  `json:"id" yaml:"id" native:"required"`
-	Handle          string  `json:"handle" yaml:"handle" native:"required,min=3,max=50"`
-	Name            string  `json:"name" yaml:"name" native:"required,min=2,max=100"`
-	Description     string  `json:"description,omitempty" yaml:"description,omitempty"`
-	Parent          *string `json:"parent" yaml:"parent"`
-	ThemeID         string  `json:"themeId,omitempty" yaml:"theme_id,omitempty"`
-	LayoutID        string  `json:"layoutId,omitempty" yaml:"layout_id,omitempty"`
-	LogoURL         string  `json:"logoUrl,omitempty" yaml:"logo_url,omitempty" native:"omitempty,url,max=2048"`
-	TosURI          string  `json:"tosUri,omitempty" yaml:"tos_uri,omitempty" native:"omitempty,url,max=2048"`
-	PolicyURI       string  `json:"policyUri,omitempty" yaml:"policy_uri,omitempty" native:"omitempty,url,max=2048"`
-	CookiePolicyURI string  `json:"cookiePolicyUri,omitempty" yaml:"cookie_policy_uri,omitempty" native:"omitempty,url,max=2048"`
+	ID          string  `json:"id" yaml:"id" native:"required"`
+	Handle      string  `json:"handle" yaml:"handle" native:"required,min=3,max=50"`
+	Name        string  `json:"name" yaml:"name" native:"required,min=2,max=100"`
+	Description string  `json:"description,omitempty" yaml:"description,omitempty"`
+	Parent      *string `json:"parent" yaml:"parent"`
+	ThemeID     string  `json:"themeId,omitempty" yaml:"theme_id,omitempty"`
+	LayoutID    string  `json:"layoutId,omitempty" yaml:"layout_id,omitempty"`
+	LogoURL     string  `json:"logoUrl,omitempty" yaml:"logo_url,omitempty" native:"omitempty,url,max=2048"`
+	TosURI      string  `json:"tosUri,omitempty" yaml:"tos_uri,omitempty" native:"omitempty,url,max=2048"`
+	PolicyURI   string  `json:"policyUri,omitempty" yaml:"policy_uri,omitempty" native:"omitempty,url,max=2048"`
+	//nolint:lll // Struct tags must be on a single line to satisfy reflect.StructTag syntax
+	CookiePolicyURI string `json:"cookiePolicyUri,omitempty" yaml:"cookie_policy_uri,omitempty" native:"omitempty,url,max=2048"`
 }
 
 // OrganizationUnitListResponse represents the response for listing organization units with pagination.

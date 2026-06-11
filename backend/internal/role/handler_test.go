@@ -20,6 +20,7 @@ package role
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -207,7 +208,8 @@ func (suite *RoleHandlerTestSuite) TestHandleRoleAddAssignmentsRequest_Validatio
 	suite.Equal(http.StatusBadRequest, w.Code)
 	suite.Contains(w.Body.String(), "Invalid request format")
 
-	suite.mockAssignmentService.AssertNotCalled(suite.T(), "AddAssignments", mock.Anything, mock.Anything, mock.Anything)
+	suite.mockAssignmentService.AssertNotCalled(
+		suite.T(), "AddAssignments", mock.Anything, mock.Anything, mock.Anything)
 }
 
 // HandleRoleGetRequest Tests
@@ -773,7 +775,7 @@ func (suite *RoleHandlerTestSuite) TestHandleError_ClientAndServerErrors() {
 	suite.T().Run("Client_NotFound", func(t *testing.T) {
 		w := httptest.NewRecorder()
 
-		handleError(w, &ErrorRoleNotFound)
+		handleError(context.Background(), w, &ErrorRoleNotFound)
 
 		suite.Equal(http.StatusNotFound, w.Code)
 		var resp apierror.ErrorResponse
@@ -785,7 +787,7 @@ func (suite *RoleHandlerTestSuite) TestHandleError_ClientAndServerErrors() {
 	suite.T().Run("ServerError", func(t *testing.T) {
 		w := httptest.NewRecorder()
 
-		handleError(w, &serviceerror.InternalServerError)
+		handleError(context.Background(), w, &serviceerror.InternalServerError)
 
 		suite.Equal(http.StatusInternalServerError, w.Code)
 		var resp apierror.ErrorResponse
@@ -793,4 +795,81 @@ func (suite *RoleHandlerTestSuite) TestHandleError_ClientAndServerErrors() {
 		suite.NoError(err)
 		suite.Equal(serviceerror.InternalServerError.Code, resp.Code)
 	})
+}
+
+// HandleRolePutRequest Unchanged Fields & Validation Tests
+func (suite *RoleHandlerTestSuite) TestHandleRolePutRequest_FieldsUnchanged() {
+	request := UpdateRoleRequest{
+		Name: "Updated Role Profile",
+		OUID: "ou1",
+	}
+
+	updatedRole := &RoleWithPermissions{
+		ID:   "role1",
+		Name: "Updated Role Profile",
+		OUID: "ou1",
+	}
+
+	suite.mockService.On("UpdateRoleWithPermissions", mock.Anything, "role1",
+		mock.AnythingOfType("RoleUpdateDetail")).Return(updatedRole, nil)
+
+	body, _ := json.Marshal(request)
+	req := httptest.NewRequest(http.MethodPut, "/roles/role1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", "role1")
+	w := httptest.NewRecorder()
+
+	suite.handler.HandleRolePutRequest(w, req)
+
+	suite.Equal(http.StatusOK, w.Code)
+}
+
+func (suite *RoleHandlerTestSuite) TestHandleRolePutRequest_EmptyJSONPayload() {
+	emptyJSON := `{}`
+
+	req := httptest.NewRequest(http.MethodPut, "/roles/role1", bytes.NewBuffer([]byte(emptyJSON)))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", "role1")
+	w := httptest.NewRecorder()
+
+	suite.handler.HandleRolePutRequest(w, req)
+
+	suite.Equal(http.StatusBadRequest, w.Code)
+	suite.mockService.AssertNotCalled(
+		suite.T(), "UpdateRoleWithPermissions", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func (suite *RoleHandlerTestSuite) TestHandleRolePutRequest_MissingRequiredFields() {
+	incompleteJSON := `{"name": "Valid Name String Only"}`
+
+	req := httptest.NewRequest(http.MethodPut, "/roles/role1", bytes.NewBuffer([]byte(incompleteJSON)))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetPathValue("id", "role1")
+	w := httptest.NewRecorder()
+
+	suite.handler.HandleRolePutRequest(w, req)
+
+	suite.Equal(http.StatusBadRequest, w.Code)
+	suite.mockService.AssertNotCalled(
+		suite.T(), "UpdateRoleWithPermissions", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func (suite *RoleHandlerTestSuite) TestHandleRoleAssignmentsGetRequest_FallbackPagination() {
+	expectedResponse := &AssignmentList{
+		TotalResults: 0,
+		Assignments:  []RoleAssignmentWithDisplay{},
+		Links:        []utils.Link{},
+	}
+
+	suite.mockAssignmentService.On("GetRoleAssignments", mock.Anything, "role1", 30, 0, false).
+		Return(expectedResponse, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/roles/role1/assignments", nil)
+	req.SetPathValue("id", "role1")
+	w := httptest.NewRecorder()
+
+	suite.handler.HandleRoleAssignmentsGetRequest(w, req)
+
+	suite.Equal(http.StatusOK, w.Code)
+	suite.mockAssignmentService.AssertExpectations(suite.T())
 }

@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package agent
 
 import (
@@ -8,16 +26,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/thunder-id/thunderid/internal/agent/model"
 	inboundmodel "github.com/thunder-id/thunderid/internal/inboundclient/model"
 	"github.com/thunder-id/thunderid/internal/system/error/serviceerror"
 	"github.com/thunder-id/thunderid/internal/system/i18n/core"
 	"github.com/thunder-id/thunderid/internal/system/utils"
+	"github.com/thunder-id/thunderid/tests/mocks/agentmock"
 )
 
 type InlineStubAgentService struct {
-	OnCreateAgent func(ctx context.Context, agent *model.Agent) (*model.AgentCompleteResponse, *serviceerror.ServiceError)
-	OnUpdateAgent func(ctx context.Context, id string, req *model.UpdateAgentRequest) (*model.AgentCompleteResponse, *serviceerror.ServiceError)
+	OnCreateAgent func(ctx context.Context, agent *model.Agent) (
+		*model.AgentCompleteResponse, *serviceerror.ServiceError)
+	OnUpdateAgent func(ctx context.Context, id string, req *model.UpdateAgentRequest) (
+		*model.AgentCompleteResponse, *serviceerror.ServiceError)
 	OnGetAgent    func(ctx context.Context, id string, inc bool) (*model.AgentGetResponse, *serviceerror.ServiceError)
 	OnDeleteAgent func(ctx context.Context, id string) *serviceerror.ServiceError
 }
@@ -31,7 +55,10 @@ func (s *InlineStubAgentService) CreateAgent(
 }
 
 func (s *InlineStubAgentService) UpdateAgent(
-	ctx context.Context, id string, req *model.UpdateAgentRequest) (*model.AgentCompleteResponse, *serviceerror.ServiceError) {
+	ctx context.Context,
+	id string,
+	req *model.UpdateAgentRequest,
+) (*model.AgentCompleteResponse, *serviceerror.ServiceError) {
 	if s.OnUpdateAgent != nil {
 		return s.OnUpdateAgent(ctx, id, req)
 	}
@@ -55,23 +82,33 @@ func (s *InlineStubAgentService) DeleteAgent(
 }
 
 func (s *InlineStubAgentService) GetAgentList(
-	ctx context.Context, limit, offset int, filters map[string]interface{}, inc bool) (*model.AgentListResponse, *serviceerror.ServiceError) {
+	ctx context.Context,
+	limit,
+	offset int,
+	filters map[string]interface{}, inc bool) (*model.AgentListResponse, *serviceerror.ServiceError) {
 	return &model.AgentListResponse{Agents: []model.BasicAgentResponse{}, Links: []utils.Link{}}, nil
 }
 
 func (s *InlineStubAgentService) GetAgentGroups(
-	ctx context.Context, id string, limit, offset int) (*model.AgentGroupListResponse, *serviceerror.ServiceError) {
+	ctx context.Context,
+	id string,
+	limit,
+	offset int) (*model.AgentGroupListResponse, *serviceerror.ServiceError) {
 	return &model.AgentGroupListResponse{}, nil
 }
 
 func (s *InlineStubAgentService) ValidateAgent(
-	ctx context.Context, agent *model.Agent, flowID string) (string, string, inboundmodel.InboundClient, *serviceerror.ServiceError) {
+	ctx context.Context,
+	agent *model.Agent,
+	flowID string) (string, string, inboundmodel.InboundClient, *serviceerror.ServiceError) {
 	return "", "", inboundmodel.InboundClient{}, nil
 }
 
 func TestHandleAgentPostRequest_Success(t *testing.T) {
 	stubService := &InlineStubAgentService{
-		OnCreateAgent: func(ctx context.Context, agent *model.Agent) (*model.AgentCompleteResponse, *serviceerror.ServiceError) {
+		OnCreateAgent: func(
+			ctx context.Context,
+			agent *model.Agent) (*model.AgentCompleteResponse, *serviceerror.ServiceError) {
 			return &model.AgentCompleteResponse{ID: "agent-123"}, nil
 		},
 	}
@@ -119,11 +156,13 @@ func TestHandleAgentPutRequest_Success(t *testing.T) {
 
 func TestHandleAgentPutRequest_ValidationError(t *testing.T) {
 	stubService := &InlineStubAgentService{
-		OnUpdateAgent: func(ctx context.Context, id string, req *model.UpdateAgentRequest) (*model.AgentCompleteResponse, *serviceerror.ServiceError) {
+		OnUpdateAgent: func(
+			ctx context.Context,
+			id string,
+			req *model.UpdateAgentRequest) (*model.AgentCompleteResponse, *serviceerror.ServiceError) {
 			return nil, &serviceerror.ServiceError{
 				Code: "AGENT-4001",
 				Type: serviceerror.ClientErrorType,
-				// ◄── THE FIX: Initialize using I18nMessage fields
 				Error: core.I18nMessage{
 					Key:          "error.agent.validation_failed",
 					DefaultValue: "Validation Failed",
@@ -144,7 +183,30 @@ func TestHandleAgentPutRequest_ValidationError(t *testing.T) {
 	handler.HandleAgentPutRequest(w, req)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
+func TestHandleAgentPutRequest_FieldsUnchanged(t *testing.T) {
+	stubService := &InlineStubAgentService{
+		OnUpdateAgent: func(
+			ctx context.Context,
+			id string,
+			req *model.UpdateAgentRequest,
+		) (*model.AgentCompleteResponse, *serviceerror.ServiceError) {
+			if req.Name == "" {
+				return nil, &serviceerror.InternalServerError
+			}
+			return &model.AgentCompleteResponse{ID: id}, nil
+		},
+	}
+	handler := newAgentHandler(stubService)
 
+	unchangedJSON := `{"name": "Valid Agent Name"}`
+
+	req := httptest.NewRequest(http.MethodPut, "/agents/agent-123", bytes.NewBufferString(unchangedJSON))
+	req.SetPathValue("id", "agent-123")
+	w := httptest.NewRecorder()
+
+	handler.HandleAgentPutRequest(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
 func TestHandleAgentPutRequest_MissingID(t *testing.T) {
 	stubService := &InlineStubAgentService{}
 	handler := newAgentHandler(stubService)
@@ -219,4 +281,134 @@ func TestHandleAgentGroupsRequest_Success(t *testing.T) {
 
 	handler.HandleAgentGroupsRequest(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+type AgentHandlerTestSuite struct {
+	suite.Suite
+	mockService *agentmock.AgentServiceInterfaceMock
+	handler     *agentHandler
+}
+
+func TestAgentHandlerTestSuite(t *testing.T) {
+	suite.Run(t, new(AgentHandlerTestSuite))
+}
+
+func (s *AgentHandlerTestSuite) SetupTest() {
+	s.mockService = agentmock.NewAgentServiceInterfaceMock(s.T())
+	s.handler = newAgentHandler(s.mockService)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentListRequest_InvalidFilter() {
+	req := httptest.NewRequest(http.MethodGet, "/agents?filter=invalidfilter", nil)
+	rr := httptest.NewRecorder()
+
+	s.handler.HandleAgentListRequest(rr, req)
+
+	s.Equal(http.StatusBadRequest, rr.Code)
+	s.Contains(rr.Body.String(), ErrorInvalidFilter.Code)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentListRequest_ServiceError() {
+	req := httptest.NewRequest(http.MethodGet, "/agents", nil)
+	rr := httptest.NewRecorder()
+
+	s.mockService.EXPECT().
+		GetAgentList(mock.Anything, mock.Anything, mock.Anything, mock.Anything, false).
+		Return(nil, &serviceerror.InternalServerError)
+
+	s.handler.HandleAgentListRequest(rr, req)
+
+	s.Equal(http.StatusInternalServerError, rr.Code)
+	s.Contains(rr.Body.String(), serviceerror.InternalServerError.Code)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentPostRequest_InvalidJSON() {
+	req := httptest.NewRequest(http.MethodPost, "/agents", bytes.NewReader([]byte("invalid json")))
+	rr := httptest.NewRecorder()
+
+	s.handler.HandleAgentPostRequest(rr, req)
+
+	s.Equal(http.StatusBadRequest, rr.Code)
+	s.Contains(rr.Body.String(), ErrorInvalidRequestFormat.Code)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentGetRequest_MissingID() {
+	req := httptest.NewRequest(http.MethodGet, "/agents/", nil)
+	req.SetPathValue("id", "")
+	rr := httptest.NewRecorder()
+
+	s.handler.HandleAgentGetRequest(rr, req)
+
+	s.Equal(http.StatusBadRequest, rr.Code)
+	s.Contains(rr.Body.String(), ErrorMissingAgentID.Code)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentPutRequest_MissingID() {
+	req := httptest.NewRequest(http.MethodPut, "/agents/", nil)
+	req.SetPathValue("id", "")
+	rr := httptest.NewRecorder()
+
+	s.handler.HandleAgentPutRequest(rr, req)
+
+	s.Equal(http.StatusBadRequest, rr.Code)
+	s.Contains(rr.Body.String(), ErrorMissingAgentID.Code)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentPutRequest_InvalidJSON() {
+	req := httptest.NewRequest(http.MethodPut, "/agents/agent1", bytes.NewReader([]byte("invalid json")))
+	req.SetPathValue("id", "agent1")
+	rr := httptest.NewRecorder()
+
+	s.handler.HandleAgentPutRequest(rr, req)
+
+	s.Equal(http.StatusBadRequest, rr.Code)
+	s.Contains(rr.Body.String(), ErrorInvalidRequestFormat.Code)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentDeleteRequest_MissingID() {
+	req := httptest.NewRequest(http.MethodDelete, "/agents/", nil)
+	req.SetPathValue("id", "")
+	rr := httptest.NewRecorder()
+
+	s.handler.HandleAgentDeleteRequest(rr, req)
+
+	s.Equal(http.StatusBadRequest, rr.Code)
+	s.Contains(rr.Body.String(), ErrorMissingAgentID.Code)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentGroupsRequest_MissingID() {
+	req := httptest.NewRequest(http.MethodGet, "/agents//groups", nil)
+	req.SetPathValue("id", "")
+	rr := httptest.NewRecorder()
+
+	s.handler.HandleAgentGroupsRequest(rr, req)
+
+	s.Equal(http.StatusBadRequest, rr.Code)
+	s.Contains(rr.Body.String(), ErrorMissingAgentID.Code)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentGroupsRequest_InvalidLimit() {
+	req := httptest.NewRequest(http.MethodGet, "/agents/agent1/groups?limit=abc", nil)
+	req.SetPathValue("id", "agent1")
+	rr := httptest.NewRecorder()
+
+	s.handler.HandleAgentGroupsRequest(rr, req)
+
+	s.Equal(http.StatusBadRequest, rr.Code)
+	s.Contains(rr.Body.String(), ErrorInvalidLimit.Code)
+}
+
+func (s *AgentHandlerTestSuite) TestHandleAgentGroupsRequest_ServiceError() {
+	req := httptest.NewRequest(http.MethodGet, "/agents/agent1/groups", nil)
+	req.SetPathValue("id", "agent1")
+	rr := httptest.NewRecorder()
+
+	s.mockService.EXPECT().
+		GetAgentGroups(mock.Anything, "agent1", mock.Anything, mock.Anything).
+		Return(nil, &ErrorAgentNotFound)
+
+	s.handler.HandleAgentGroupsRequest(rr, req)
+
+	s.Equal(http.StatusNotFound, rr.Code)
+	s.Contains(rr.Body.String(), ErrorAgentNotFound.Code)
 }
