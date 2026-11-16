@@ -6,6 +6,8 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,10 +16,13 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/thunder-id/thunderid/internal/application/model"
+	"github.com/thunder-id/thunderid/internal/entity"
 	"github.com/thunder-id/thunderid/internal/sharing"
 	declarativeresource "github.com/thunder-id/thunderid/internal/system/declarative_resource"
 	"github.com/thunder-id/thunderid/internal/system/log"
+	tidcommon "github.com/thunder-id/thunderid/pkg/thunderidengine/common"
 	"github.com/thunder-id/thunderid/pkg/thunderidengine/providers"
+	"github.com/thunder-id/thunderid/tests/mocks/entitymock"
 	"github.com/thunder-id/thunderid/tests/mocks/sharingmock"
 )
 
@@ -669,7 +674,7 @@ func TestExportWritesTheApplicationWithoutSharingWhenItHoldsNone(t *testing.T) {
 	sharingMock := sharingmock.NewSharingServiceInterfaceMock(t)
 	sharingMock.EXPECT().ExportPolicies(mock.Anything, ApplicationSharingType, "app1").Return(nil, nil)
 
-	resource, _, err := NewApplicationExporterForTest(mockAppService, sharingMock).
+	resource, _, err := NewApplicationExporterForTest(mockAppService, noFlowSecretHeld(t, "app1"), sharingMock).
 		GetResourceByID(context.Background(), "app1")
 
 	require.Nil(t, err)
@@ -693,7 +698,7 @@ func TestExportCarriesTheSharingPolicies(t *testing.T) {
 	sharingMock := sharingmock.NewSharingServiceInterfaceMock(t)
 	sharingMock.EXPECT().ExportPolicies(mock.Anything, ApplicationSharingType, "app1").Return(replayable, nil)
 
-	resource, _, err := NewApplicationExporterForTest(mockAppService, sharingMock).
+	resource, _, err := NewApplicationExporterForTest(mockAppService, noFlowSecretHeld(t, "app1"), sharingMock).
 		GetResourceByID(context.Background(), "app1")
 
 	require.Nil(t, err)
@@ -705,7 +710,7 @@ func TestExportCarriesTheSharingPolicies(t *testing.T) {
 // The export pipeline hands the exporter back what GetResourceByID returned, so validation and the
 // per-resource rules read the application out of the document rather than refusing its type.
 func TestExporterReadsTheApplicationOutOfTheDocument(t *testing.T) {
-	exporter := NewApplicationExporterForTest(NewApplicationServiceInterfaceMock(t), nil)
+	exporter := NewApplicationExporterForTest(NewApplicationServiceInterfaceMock(t), nil, nil)
 	document := &applicationDeclarativeResource{Application: providers.Application{
 		ID: "app1", Name: "Public App",
 		InboundAuthConfig: []providers.InboundAuthConfigWithSecret{{
@@ -721,4 +726,116 @@ func TestExporterReadsTheApplicationOutOfTheDocument(t *testing.T) {
 	rules := ruler.GetResourceRulesForResource(document)
 	require.NotNil(t, rules)
 	assert.Contains(t, rules.Variables, "InboundAuthConfig[].OAuthConfig.ClientID")
+}
+
+// noFlowSecretHeld answers that the application holds no Flow Secret.
+func noFlowSecretHeld(t *testing.T, appID string) *entitymock.EntityServiceInterfaceMock {
+	entityMock := entitymock.NewEntityServiceInterfaceMock(t)
+	entityMock.EXPECT().GetCredentialsByType(mock.Anything, appID, fieldFlowSecret).
+		Return([]entity.StoredCredential{}, nil)
+	return entityMock
+}
+
+// exporterFor returns an exporter that reads the application and its sharing from mocks, and asks the
+// given entity service whether the application holds a Flow Secret.
+func exporterFor(t *testing.T, app *providers.Application,
+	entityService *entitymock.EntityServiceInterfaceMock) *applicationExporter {
+	t.Helper()
+	mockAppService := NewApplicationServiceInterfaceMock(t)
+	mockAppService.EXPECT().GetApplication(mock.Anything, app.ID).Return(app, nil)
+	sharingMock := sharingmock.NewSharingServiceInterfaceMock(t)
+	sharingMock.EXPECT().ExportPolicies(mock.Anything, ApplicationSharingType, app.ID).Return(nil, nil)
+	return NewApplicationExporterForTest(mockAppService, entityService, sharingMock)
+}
+
+// An export refers to an application's Flow Secret only when the application holds one, so an import
+// is given the value the control plane holds rather than generating one of its own, and is never asked
+// for a value nothing holds.
+func TestExportRefersToAFlowSecretOnlyWhenTheApplicationHoldsOne(t *testing.T) {
+	embedded := providers.Application{ID: "app1", Name: "Embedded App", Type: string(model.ApplicationTypeCustom)}
+	browser := providers.Application{
+		ID: "app1", Name: "Browser App", Type: string(model.ApplicationTypeBrowser),
+		InboundAuthConfig: []providers.InboundAuthConfigWithSecret{{
+			Type:        providers.OAuthInboundAuthType,
+			OAuthConfig: &providers.OAuthConfigWithSecret{ClientID: "client-id-1", PublicClient: true},
+		}},
+	}
+	cases := []struct {
+		name          string
+		app           providers.Application
+		lookedUp      bool
+		held          []entity.StoredCredential
+		lookupErr     error
+		wantReference bool
+	}{
+		{name: "an application that holds one", app: embedded, lookedUp: true,
+			held: []entity.StoredCredential{{Value: "hashed"}}, wantReference: true},
+		{name: "an application that may hold one but holds none", app: embedded, lookedUp: true,
+			held: []entity.StoredCredential{}},
+		{name: "an application with no entity", app: embedded, lookedUp: true, lookupErr: entity.ErrEntityNotFound},
+		{name: "an application that cannot hold one is not asked", app: browser},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			entityMock := entitymock.NewEntityServiceInterfaceMock(t)
+			if tc.lookedUp {
+				entityMock.EXPECT().GetCredentialsByType(mock.Anything, tc.app.ID, fieldFlowSecret).
+					Return(tc.held, tc.lookupErr)
+			}
+			exporter := exporterFor(t, &tc.app, entityMock)
+
+			resource, _, err := exporter.GetResourceByID(context.Background(), tc.app.ID)
+			require.Nil(t, err)
+			exported, ok := resource.(*applicationDeclarativeResource)
+			require.True(t, ok)
+
+			assert.Empty(t, exported.FlowSecret, "a read holds no Flow Secret, so none is exported in the clear")
+			assert.Equal(t, tc.wantReference,
+				slices.Contains(exporter.GetResourceRulesForResource(exported).SecretVariables, "FlowSecret"))
+		})
+	}
+}
+
+// A failure to read the Flow Secret fails the export rather than dropping the reference, which would
+// leave the importing deployment to generate a value of its own.
+func TestExportFailsWhenTheFlowSecretCannotBeRead(t *testing.T) {
+	app := &providers.Application{ID: "app1", Name: "Embedded App", Type: string(model.ApplicationTypeCustom)}
+	entityMock := entitymock.NewEntityServiceInterfaceMock(t)
+	entityMock.EXPECT().GetCredentialsByType(mock.Anything, "app1", fieldFlowSecret).
+		Return(nil, errors.New("store unavailable"))
+
+	_, _, err := exporterFor(t, app, entityMock).GetResourceByID(context.Background(), "app1")
+
+	require.NotNil(t, err)
+	assert.Equal(t, tidcommon.InternalServerError.Code, err.Code)
+}
+
+// A capture carries the Flow Secret a write set, and its rules name it as a secret, so the value is
+// kept under the name the export refers to it by. A capture of a write that set none names none.
+func TestACapturedFlowSecretIsASecretVariable(t *testing.T) {
+	cases := []struct {
+		name          string
+		flowSecret    string
+		wantReference bool
+	}{
+		{name: "a write that set one", flowSecret: "the-flow-secret", wantReference: true},
+		{name: "a write that set none"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			captured := &applicationDeclarativeResource{
+				Application: providers.Application{ID: "app1", Name: "Embedded App"},
+				FlowSecret:  tc.flowSecret,
+			}
+
+			rules := NewApplicationExporterForTest(nil, nil, nil).GetResourceRulesForResource(captured)
+
+			assert.Equal(t, tc.wantReference, slices.Contains(rules.SecretVariables, "FlowSecret"))
+		})
+	}
+}
+
+// The Flow Secret is a field a secret reference may stand in, so an import resolves it.
+func TestSecretFieldsNameTheFlowSecret(t *testing.T) {
+	assert.Contains(t, NewApplicationExporterForTest(nil, nil, nil).SecretFields(), "flowSecret")
 }

@@ -1,7 +1,7 @@
 # Control Plane and Data Plane Separation Specification
 
 - **Status:** Draft
-- **Version:** 0.1
+- **Version:** 0.2
 - **Related documents:** [#4281](https://github.com/thunder-id/thunderid/issues/4281) (separate ThunderID into a Control Plane and a Data Plane), [#5602](https://github.com/thunder-id/thunderid/issues/5602) (capture configuration versions and apply them to a gateway), [#5582](https://github.com/thunder-id/thunderid/issues/5582) (default gateway), [#5738](https://github.com/thunder-id/thunderid/issues/5738) (Control Plane and Data Plane out of the box for on-prem), [#6246](https://github.com/thunder-id/thunderid/issues/6246) (a revert on the Control Plane must reach the Data Plane), [#6392](https://github.com/thunder-id/thunderid/issues/6392) (pack naming), [Discussion #5862](https://github.com/thunder-id/thunderid/discussions/5862#discussioncomment-19390966) (projects). User guides: [configuration versions](../../docs/content/guides/declarative-configurations/configuration-versions.mdx), [import resources](../../docs/content/guides/declarative-configurations/import-resources.mdx), [value references](../../docs/content/guides/declarative-configurations/value-references.mdx), [centralized configuration](../../docs/content/use-cases/managed-deployments/centralized-configuration.mdx). API: [gateway](../../api/gateway.yaml), [configuration-version](../../api/configuration-version.yaml), [import](../../api/import.yaml), [variable-store](../../api/variable-store.yaml), [project](../../api/project.yaml). Threat model: not yet written (see Open questions).
 
 ## Summary
@@ -67,7 +67,7 @@ flowchart LR
 Ownership boundaries:
 
 - The CP owns configuration. The DP owns users' runtime state: sessions, tokens, credentials set through flows, and users created at sign-up.
-- The DP owns environment values: client IDs and secrets, redirect URIs, connection credentials, resource server identifiers, an agent's owner. The CP stores only the reference. A value it captures as a resource is written is held in memory only until it is delivered to the first gateway's variable store (see [Value capture](#value-capture)).
+- The DP owns environment values: client IDs and secrets, Flow Secrets, redirect URIs, connection credentials, resource server identifiers, an agent's owner. The CP stores only the reference. A value it captures as a resource is written is held in memory only until it is delivered to the first gateway's variable store (see [Value capture](#value-capture)).
 - One CP administers one or more DPs (`gateway.max_gateways`, one by default). A DP does not know its CP beyond the management API key it accepts.
 
 Existing seams the design uses: the declarative export and import (`internal/system/export`, `internal/system/importer`), the variable store (`internal/variablestore`), the trusted issuer feature of the security middleware, and the declarative resource store modes (`mutable`, `declarative`, `composite`).
@@ -160,7 +160,7 @@ A secret reference may stand only in a field that holds a credential. A capture 
 
 References resolve at the gateway, so the gateway must hold their values. Because the CP stores only hashes of secrets, the only moment it can see a generated client secret or a password is the write itself. As a resource is written on the CP, the values its export refers to are sent to the **first gateway of the pipeline** (the default gateway when no pipeline is set), under the same name the reference uses.
 
-- Covered writes: application and agent create and update, user create and credential update, connection create and update, resource server create and update, authorization detail type create and update. An agent's owner is captured on create and when an update changes it.
+- Covered writes: application and agent create and update, user create and credential update, connection create and update, resource server create and update, authorization detail type create and update. An agent's owner is captured on create and when an update changes it. An application's Flow Secret is captured on create and when an update sets a new one, and its export refers to it only when the application holds one.
 - The value goes in the background and never blocks the write. Failures retry with growing delay, up to ten times, and a newer value for the same name replaces one in flight. A value is sent only over `https://`.
 - A value that is itself a reference is never captured.
 - **Fill on start.** A CP that starts writes, to the first gateway, each variable its applications, agents and resource servers refer to that the gateway lacks. It never replaces a held value and never fills secrets.
@@ -187,7 +187,7 @@ Group members and role assignees are owned one by one: a managed import removes 
 
 ### Upgrade order and compatibility
 
-Upgrade a DP before the CP that deploys to it. A DP on a release without `POST /import/managed` answers `404`. The CP then falls back to the plain `POST /import` and the result carries `"plainImport": true`. That deploy succeeds, but what it writes is editable on that DP, and upgrading the DP later does not mark it read only. A resource is marked only when a managed import next writes it. A DP on a release without assignee or member removal refuses those removals as unsupported. A DP older than the owner reference cannot read an owner resolved from references.
+Upgrade a DP before the CP that deploys to it. A DP on a release without `POST /import/managed` answers `404`. The CP then falls back to the plain `POST /import` and the result carries `"plainImport": true`. That deploy succeeds, but what it writes is editable on that DP, and upgrading the DP later does not mark it read only. A resource is marked only when a managed import next writes it. A DP on a release without assignee or member removal refuses those removals as unsupported. A DP older than the owner reference cannot read an owner resolved from references. A DP older than the Flow Secret reference (v2.0.0-m1 and earlier) refuses an application whose export refers to its Flow Secret, as a misplaced secret (`IMP-1007`).
 
 ### Data model
 
@@ -338,6 +338,7 @@ Each acceptance criterion names the test that covers it. Gaps are in Open questi
 - **AC8.1:** Given an application, agent, user, connection, resource server or authorization detail type, when it is written on the CP, then the first gateway holds the values under the names the export refers to. Verified by `capture_test.go` (one test per type, from `TestAWrittenApplicationsValuesReachTheDefaultGateway` through `TestAWrittenAuthorizationDetailTypesProcessorCredentialReachesTheDefaultGateway`).
 - **AC8.2:** Given a send the gateway refused, when the resource is written again, then the value is sent again. Verified by `TestACapturedValueRefusedOnceIsWrittenAgain`.
 - **AC8.3:** Given a CP that starts, when the first gateway lacks a variable, then it is filled, and a held value is not replaced. Verified by `value_capture_test.go` `TestFillingWritesOnlyTheVariablesTheFirstGatewayLacks` and `TestFillingKeepsAValueAlreadyOnItsWay` (unit).
+- **AC8.4:** Given an application that holds a Flow Secret, when it is created or an update sets a new Flow Secret, then the first gateway holds the value under the name the export refers to, and a DP that imports the export with that value accepts the Flow Secret the CP issued. Verified by `capture_test.go` `TestAWrittenApplicationsFlowSecretReachesTheDefaultGateway` and `dataplane_test.go` `TestADataPlaneAcceptsTheFlowSecretTheControlPlaneIssued`.
 
 ### R9. What a CP deploys is read only on the DP
 
@@ -374,3 +375,4 @@ These are known gaps in what is built, or decisions not yet made. None is a requ
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-11-13 | Initial specification. |
+| 0.2 | 2026-11-16 | An application's Flow Secret is exported as a secret reference and captured to the first gateway, so a gateway accepts the Flow Secret the CP issued. A DP on v2.0.0-m1 or earlier refuses such an application, so DPs are upgraded first. |
